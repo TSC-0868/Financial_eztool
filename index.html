@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="th" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101819">
+  <title>AlphaSight | Equity Screener & Portfolio Diagnostics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101819;
+      --surface: #172122;
+      --surface-raised: #1b2829;
+      --line: #2a3939;
+      --text: #edf3ef;
+      --muted: #9baaa4;
+      --quiet: #71817b;
+      --accent: #7ed7b1;
+      --accent-ink: #10251d;
+      --blue: #8fc3fa;
+      --amber: #edc179;
+      --red: #f08d83;
+      --mono: "IBM Plex Mono", monospace;
+      --sans: "IBM Plex Sans Thai", sans-serif;
+    }
+    html:not(.dark) {
+      color-scheme: light;
+      --bg: #f1f5f2;
+      --surface: #ffffff;
+      --surface-raised: #f6f9f7;
+      --line: #d9e2dd;
+      --text: #1c2924;
+      --muted: #596a62;
+      --quiet: #7a8982;
+      --accent: #147954;
+      --accent-ink: #ffffff;
+      --blue: #286aa5;
+      --amber: #9c6411;
+      --red: #b94037;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); }
+    button, select, input { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .shell { width: min(1360px, 100% - 48px); margin: 0 auto; }
+    .topbar { position: sticky; z-index: 10; top: 0; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(14px); }
+    .topbar-inner { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand-group, .brand, .top-actions, .tabs, .toolbar, .section-heading, .row-title, .split-line { display: flex; align-items: center; }
+    .brand-group { gap: 32px; min-width: 0; }
+    .brand { gap: 10px; flex-shrink: 0; }
+    .brand-mark { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: var(--accent); color: var(--accent-ink); font: 600 15px var(--mono); }
+    .brand-name { font-size: 15px; font-weight: 700; letter-spacing: .06em; }
+    .version { color: var(--quiet); font: 10px var(--mono); }
+    .tabs { align-self: stretch; gap: 4px; }
+    .tab { position: relative; padding: 0 14px; border: 0; background: transparent; color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .tab:hover, .tab[aria-selected="true"] { color: var(--text); }
+    .tab[aria-selected="true"]::after { position: absolute; right: 12px; bottom: 0; left: 12px; height: 2px; background: var(--accent); content: ""; }
+    .top-actions { gap: 16px; }
+    .market-note { color: var(--quiet); font: 10px var(--mono); white-space: nowrap; }
+    .icon-button, .quiet-button, .outline-button, .primary-button, .select { min-height: 36px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+    .icon-button { width: 38px; display: grid; place-items: center; color: var(--muted); }
+    .icon-button:hover, .quiet-button:hover, .outline-button:hover { background: var(--surface-raised); color: var(--text); }
+    .theme-icon { width: 17px; height: 17px; }
+    main { padding: 34px 0 64px; }
+    .view { display: none; }
+    .view.active { display: block; animation: enter .22s ease-out; }
+    @keyframes enter { from { opacity: .45; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .section-heading { justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 23px; font-weight: 600; letter-spacing: -.02em; }
+    .subtitle { max-width: 780px; margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .toolbar { gap: 8px; flex-shrink: 0; }
+    .select { padding: 0 32px 0 11px; color: var(--text); font-size: 12px; }
+    .primary-button { padding: 0 14px; border-color: var(--accent); background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 600; }
+    .primary-button:hover { filter: brightness(1.06); }
+    .criteria { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
+    .criterion { min-height: 78px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+    .criterion-label, .eyebrow { color: var(--quiet); font: 10px var(--mono); text-transform: uppercase; }
+    .criterion-value { margin-top: 6px; font: 500 13px var(--mono); }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface-raised); color: var(--quiet); font: 10px var(--mono); text-transform: uppercase; white-space: nowrap; }
+    td { padding: 15px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--surface-raised); }
+    .right { text-align: right; }
+    .ticker { color: var(--blue); font: 600 13px var(--mono); }
+    .exchange, .cell-note { color: var(--muted); font: 11px var(--mono); }
+    .positive { color: var(--accent); }
+    .narrative { min-width: 235px; }
+    .narrative strong { display: block; font-size: 12px; font-weight: 500; }
+    .narrative span { display: block; margin-top: 3px; color: var(--quiet); font-size: 11px; }
+    .outline-button, .quiet-button { padding: 0 10px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .table-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); color: var(--quiet); font: 10px var(--mono); }
+    .empty-state { padding: 30px; color: var(--muted); text-align: center; }
+    .upload-zone { display: grid; min-height: 212px; place-items: center; padding: 30px; border: 1px dashed #50625b; border-radius: 6px; background: var(--surface); text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+    .upload-zone:hover, .upload-zone.dragging { border-color: var(--accent); background: var(--surface-raised); }
+    .upload-icon { width: 30px; height: 30px; margin: 0 auto 10px; color: var(--accent); }
+    .upload-title { font-size: 15px; font-weight: 500; }
+    .upload-copy { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .upload-meta { margin-top: 14px; color: var(--quiet); font: 10px var(--mono); }
+    .hidden { display: none !important; }
+    .loading { padding: 48px 20px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); text-align: center; }
+    .spinner { width: 21px; height: 21px; margin: 0 auto 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-steps { margin-top: 5px; color: var(--quiet); font: 10px var(--mono); }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .metric { padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+    .metric-value { margin-top: 5px; font: 600 24px var(--mono); }
+    .metric-foot { margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .portfolio-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(290px, 1fr); gap: 14px; margin-bottom: 14px; }
+    .panel { min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .panel-title { margin: 0; color: var(--muted); font: 500 11px var(--mono); text-transform: uppercase; }
+    .holdings-table { font: 11px var(--mono); }
+    .holdings-table th { padding: 9px 8px; background: transparent; }
+    .holdings-table td { padding: 11px 8px; }
+    .sector-chart { height: 195px; position: relative; }
+    .split-line { justify-content: space-between; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font: 10px var(--mono); }
+    .diagnostics { padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+    .diagnostic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 16px; }
+    .diagnostic { padding-left: 13px; border-left: 2px solid var(--red); }
+    .diagnostic:nth-child(2) { border-color: var(--blue); }
+    .diagnostic-title { font-size: 12px; font-weight: 600; }
+    .diagnostic p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    .disclaimer { margin: 14px 0 0; color: var(--quiet); font-size: 10px; }
+    .modal-backdrop { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 18px; background: #07100fc9; backdrop-filter: blur(5px); }
+    .modal { width: min(520px, 100%); padding: 20px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: 0 24px 80px #0005; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
+    .modal-title { margin: 0; font: 600 14px var(--mono); }
+    .modal-body { display: grid; gap: 16px; padding-top: 15px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .modal-body p { margin: 4px 0 0; }
+    @media (max-width: 900px) {
+      .shell { width: min(100% - 32px, 760px); }
+      .brand-group { gap: 16px; }
+      .market-note { display: none; }
+      .criteria { grid-template-columns: repeat(2, 1fr); }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .portfolio-grid { grid-template-columns: 1fr; }
+      .table-wrap { overflow-x: auto; }
+      .screener-table { min-width: 900px; }
+    }
+    @media (max-width: 620px) {
+      .shell { width: calc(100% - 28px); }
+      .topbar-inner { min-height: 60px; flex-wrap: wrap; gap: 0; padding-top: 9px; }
+      .brand-group { flex: 1; justify-content: space-between; }
+      .brand-name { font-size: 13px; }
+      .tabs { order: 3; width: 100%; height: 42px; }
+      .tab { flex: 1; padding: 0 6px; font-size: 11px; }
+      .tab[aria-selected="true"]::after { right: 4px; left: 4px; }
+      .top-actions { gap: 8px; }
+      .top-actions .icon-button { width: 34px; min-height: 34px; }
+      main { padding-top: 23px; }
+      .section-heading { align-items: flex-start; flex-direction: column; gap: 14px; padding-bottom: 17px; }
+      h1 { font-size: 20px; }
+      .subtitle { font-size: 12px; }
+      .toolbar { width: 100%; }
+      .toolbar .select { flex: 1; min-width: 0; }
+      .criteria { gap: 8px; margin: 14px 0; }
+      .criterion { min-height: 73px; padding: 11px; }
+      .criterion-value { font-size: 11px; }
+      .metrics { gap: 8px; }
+      .metric { padding: 13px; }
+      .metric-value { font-size: 20px; }
+      .diagnostic-grid { grid-template-columns: 1fr; gap: 16px; }
+      .panel { padding: 13px; }
+      .holdings-table { min-width: 600px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand-group">
+        <a class="brand" href="#" aria-label="AlphaSight home">
+          <span class="brand-mark" aria-hidden="true">A</span>
+          <span class="brand-name">ALPHASIGHT</span>
+          <span class="version">v1.0</span>
+        </a>
+        <nav class="tabs" aria-label="Main navigation" role="tablist">
+          <button class="tab" id="tab-screener" role="tab" aria-selected="true" aria-controls="view-screener" data-view="screener">Screener &amp; Narrative</button>
+          <button class="tab" id="tab-portfolio" role="tab" aria-selected="false" aria-controls="view-portfolio" data-view="portfolio">Portfolio Risk</button>
+        </nav>
+      </div>
+      <div class="top-actions">
+        <span class="market-note">MARKETS: NYSE / NASDAQ / S&amp;P 500</span>
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch theme">
+          <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="view active" id="view-screener" role="tabpanel" aria-labelledby="tab-screener">
+      <div class="section-heading">
+        <div>
+          <h1>Undervalued &amp; Unpriced Narrative Screener</h1>
+          <p class="subtitle">คัดกรองหุ้นที่มูลค่าต่ำกว่าปัจจัยพื้นฐาน พร้อมตรวจจับสัญญาณ Narrative ที่ตลาดยังไม่ได้รับรู้</p>
+        </div>
+        <div class="toolbar">
+          <label class="hidden" for="index-filter">Filter by index</label>
+          <select class="select" id="index-filter">
+            <option value="all">All indexes</option>
+            <option value="S&amp;P 500">S&amp;P 500</option>
+            <option value="NASDAQ 100">NASDAQ 100</option>
+            <option value="NYSE">NYSE</option>
+          </select>
+          <button class="primary-button" id="export-button" type="button">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="criteria" aria-label="Screening criteria">
+        <div class="criterion"><div class="criterion-label">Filter criterion 01</div><div class="criterion-value">PEG Ratio &lt; 1.0</div></div>
+        <div class="criterion"><div class="criterion-label">Filter criterion 02</div><div class="criterion-value">ROIC &gt; WACC</div></div>
+        <div class="criterion"><div class="criterion-label">Filter criterion 03</div><div class="criterion-value">Implied FCF &lt; Consensus</div></div>
+        <div class="criterion"><div class="criterion-label">Filter criterion 04</div><div class="criterion-value">Positive NLP Divergence</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="screener-table">
+          <thead><tr>
+            <th scope="col">Ticker</th><th scope="col">Exchange</th><th scope="col" class="right">Price</th><th scope="col" class="right">PEG</th><th scope="col" class="right">ROIC</th><th scope="col">Reverse DCF (implied vs est.)</th><th scope="col">Detected narrative</th><th scope="col" class="right">Action</th>
+          </tr></thead>
+          <tbody id="screener-rows"></tbody>
+        </table>
+        <div class="table-footer"><span id="result-count">3 results</span><span>DEMO DATA · NOT INVESTMENT ADVICE</span></div>
+      </div>
+      <p class="disclaimer">ตัวเลขและสัญญาณในหน้าจอนี้เป็นข้อมูลตัวอย่างเพื่อสาธิต ไม่ใช่คำแนะนำในการลงทุน</p>
+    </section>
+
+    <section class="view" id="view-portfolio" role="tabpanel" aria-labelledby="tab-portfolio">
+      <div class="section-heading">
+        <div>
+          <h1>Portfolio Vision &amp; Risk Diagnostics</h1>
+          <p class="subtitle">อัปโหลดภาพพอร์ตเพื่อจำลองการแปลงข้อมูลและดูการวิเคราะห์ความเสี่ยง</p>
+        </div>
+      </div>
+      <label class="upload-zone" id="upload-zone" for="file-input" tabindex="0">
+        <span>
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg>
+          <span class="eyebrow" style="color:var(--accent)">Vision OCR pipeline</span>
+          <span class="upload-title" style="display:block">คลิกเพื่อเลือกไฟล์ หรือลากภาพมาวางที่นี่</span>
+          <span class="upload-copy" style="display:block">รองรับ PNG, JPG และ WebP</span>
+          <span class="upload-meta" style="display:block">ไฟล์จะไม่ถูกอัปโหลด · การวิเคราะห์เป็นข้อมูลตัวอย่าง</span>
+        </span>
+        <input class="hidden" type="file" id="file-input" accept="image/png,image/jpeg,image/webp">
+      </label>
+      <div class="loading hidden" id="loading-state" role="status" aria-live="polite">
+        <div class="spinner"></div><div>กำลังจำลองการประมวลผลภาพ...</div>
+        <div class="loading-steps">STEP 1: OCR EXTRACTION → STEP 2: BETA &amp; SECTOR → STEP 3: HHI</div>
+      </div>
+      <div class="hidden" id="result-dashboard">
+        <div class="metrics">
+          <div class="metric"><div class="eyebrow">Extracted value</div><div class="metric-value">$24,500</div><div class="metric-foot positive">Demo OCR confidence: 98.4%</div></div>
+          <div class="metric"><div class="eyebrow">Portfolio beta</div><div class="metric-value">1.32</div><div class="metric-foot" style="color:var(--amber)">High sensitivity vs S&amp;P 500</div></div>
+          <div class="metric"><div class="eyebrow">Concentration (HHI)</div><div class="metric-value">0.31</div><div class="metric-foot" style="color:var(--red)">Over-concentrated (&gt;0.25)</div></div>
+          <div class="metric"><div class="eyebrow">Cash allocation</div><div class="metric-value">15.0%</div><div class="metric-foot">$3,675 available</div></div>
+        </div>
+        <div class="portfolio-grid">
+          <section class="panel">
+            <div class="panel-heading"><h2 class="panel-title">Extracted holdings</h2><button class="quiet-button" id="reset-portfolio" type="button">Upload new image</button></div>
+            <div class="table-wrap" style="border:0;border-radius:0">
+              <table class="holdings-table">
+                <thead><tr><th scope="col">Ticker</th><th scope="col">Sector</th><th scope="col" class="right">Weight</th><th scope="col" class="right">Beta</th><th scope="col" class="right">Valuation status</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>NVDA</strong></td><td>Information Technology</td><td class="right">42.0%</td><td class="right">1.68</td><td class="right" style="color:var(--amber)">Fair / high growth</td></tr>
+                  <tr><td><strong>AAPL</strong></td><td>Information Technology</td><td class="right">25.0%</td><td class="right">1.24</td><td class="right">Fairly valued</td></tr>
+                  <tr><td><strong>JPM</strong></td><td>Financials</td><td class="right">18.0%</td><td class="right">1.10</td><td class="right positive">Undervalued</td></tr>
+                  <tr><td><strong>CASH</strong></td><td>Cash &amp; equivalents</td><td class="right">15.0%</td><td class="right">0.00</td><td class="right">N/A</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-heading"><h2 class="panel-title">Sector exposure</h2></div>
+            <div class="sector-chart"><canvas id="sector-chart" aria-label="Sector exposure: technology 67 percent, financials 18 percent, cash 15 percent"></canvas></div>
+            <div class="split-line"><span>IT exposure: 67.0%</span><span style="color:var(--red)">Threshold: &lt;35%</span></div>
+          </section>
+        </div>
+        <section class="diagnostics">
+          <h2 class="panel-title">Risk diagnostics &amp; rebalancing considerations</h2>
+          <div class="diagnostic-grid">
+            <div class="diagnostic"><div class="diagnostic-title">1. Sector concentration risk</div><p>พอร์ตมีน้ำหนักในกลุ่ม Information Technology สูงถึง 67% และมีค่า Portfolio Beta 1.32 หากกลุ่ม Semiconductor ปรับฐาน พอร์ตอาจผันผวนกว่าดัชนี S&amp;P 500</p></div>
+            <div class="diagnostic"><div class="diagnostic-title">2. Diversification to consider</div><p>ข้อมูลตัวอย่างนี้ชี้ให้เห็นการกระจุกตัวในหุ้นเทคโนโลยี การกระจายไปยังกลุ่ม Healthcare หรือ Consumer Defensive อาจช่วยลดความเสี่ยงเฉพาะกลุ่ม ควรศึกษาความเหมาะสมก่อนตัดสินใจ</p></div>
+          </div>
+          <p class="disclaimer">ผลลัพธ์ทั้งหมดเป็นข้อมูลจำลอง ไม่ได้อ่านข้อมูลจากภาพจริง และไม่ใช่คำแนะนำทางการเงิน</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop hidden" id="narrative-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <section class="modal">
+      <div class="modal-head"><h2 class="modal-title" id="modal-title">Ticker — Narrative breakdown</h2><button class="icon-button" id="close-modal" type="button" aria-label="Close dialog" title="Close">×</button></div>
+      <div class="modal-body">
+        <div><span class="eyebrow">01 · Earnings call shift</span><p id="modal-narrative"></p></div>
+        <div><span class="eyebrow">02 · Reverse DCF valuation</span><p id="modal-dcf"></p></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const stocks = [
+      { ticker: 'PYPL', exchange: 'NASDAQ', indexes: ['NASDAQ 100', 'S&P 500'], price: '$65.40', peg: '0.85', roic: '14.2%', implied: '1.8%', estimate: '7.5%', narrative: 'Margin expansion from Fastlane checkout', source: 'Q3 transcript NLP + insider buy', detail: 'ฝ่ายบริหารกล่าวถึงการลดต้นทุนโครงสร้างพื้นฐานและการเติบโตของอัตรากำไรจากการดำเนินงาน ข้อมูลตัวอย่างชี้ให้เห็นความแตกต่างระหว่างแนวโน้มธุรกิจกับการประเมินของตลาด', dcf: 'ที่ราคาปัจจุบัน ตลาดกำลังประเมินการเติบโตของ FCF ที่ 1.8% ต่อปี เทียบกับประมาณการตัวอย่างที่ 7.5%' },
+      { ticker: 'CVS', exchange: 'NYSE', indexes: ['S&P 500', 'NYSE'], price: '$58.20', peg: '0.91', roic: '9.8%', implied: '-0.5%', estimate: '4.2%', narrative: 'Restructuring cost-save ahead of schedule', source: '13F institutional accumulation', detail: 'สัญญาณตัวอย่างบ่งชี้ความคืบหน้าของการปรับโครงสร้างและการประหยัดต้นทุน ควรตรวจสอบข้อมูลล่าสุดจากเอกสารบริษัทก่อนใช้งานจริง', dcf: 'สมมติฐานตัวอย่างประเมิน implied FCF growth ที่ -0.5% ต่อปี เทียบกับประมาณการที่ 4.2%' },
+      { ticker: 'GOOGL', exchange: 'NASDAQ', indexes: ['NASDAQ 100', 'S&P 500'], price: '$172.10', peg: '0.96', roic: '26.4%', implied: '8.0%', estimate: '13.5%', narrative: 'Cloud operating leverage & custom TPU adoption', source: 'Upward EPS revision divergence', detail: 'ข้อมูลตัวอย่างเน้น operating leverage ของธุรกิจ Cloud และการนำ custom TPU มาใช้ ซึ่งอาจส่งผลต่อประสิทธิภาพในระยะยาว', dcf: 'สมมติฐานตัวอย่างประเมิน implied FCF growth ที่ 8.0% ต่อปี เทียบกับประมาณการที่ 13.5%' }
+    ];
+
+    const rows = document.getElementById('screener-rows');
+    const indexFilter = document.getElementById('index-filter');
+    const modal = document.getElementById('narrative-modal');
+    let chartInstance = null;
+
+    function renderRows() {
+      const selectedIndex = indexFilter.value;
+      const visibleStocks = stocks.filter(stock => selectedIndex === 'all' || stock.indexes.includes(selectedIndex));
+      rows.innerHTML = visibleStocks.map(stock => `
+        <tr>
+          <td><span class="ticker">${stock.ticker}</span></td>
+          <td><span class="exchange">${stock.exchange}</span></td>
+          <td class="right mono">${stock.price}</td>
+          <td class="right mono positive">${stock.peg}</td>
+          <td class="right mono">${stock.roic}</td>
+          <td><span class="cell-note">Mkt: ${stock.implied}</span> / <span class="cell-note positive">Est: ${stock.estimate}</span></td>
+          <td class="narrative"><strong>${stock.narrative}</strong><span>Source: ${stock.source}</span></td>
+          <td class="right"><button class="outline-button inspect-button" type="button" data-ticker="${stock.ticker}">Inspect</button></td>
+        </tr>`).join('');
+      document.getElementById('result-count').textContent = `${visibleStocks.length} ${visibleStocks.length === 1 ? 'result' : 'results'}`;
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(item => item.setAttribute('aria-selected', String(item === tab)));
+      document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.id === `view-${tab.dataset.view}`));
+      if (tab.dataset.view === 'portfolio' && !document.getElementById('result-dashboard').classList.contains('hidden')) renderChart();
+    }));
+
+    indexFilter.addEventListener('change', renderRows);
+    rows.addEventListener('click', event => {
+      const button = event.target.closest('.inspect-button');
+      if (!button) return;
+      const stock = stocks.find(item => item.ticker === button.dataset.ticker);
+      document.getElementById('modal-title').textContent = `${stock.ticker} — Narrative breakdown`;
+      document.getElementById('modal-narrative').textContent = stock.detail;
+      document.getElementById('modal-dcf').textContent = stock.dcf;
+      modal.classList.remove('hidden');
+      document.getElementById('close-modal').focus();
+    });
+
+    function closeModal() { modal.classList.add('hidden'); }
+    document.getElementById('close-modal').addEventListener('click', closeModal);
+    modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+
+    document.getElementById('theme-toggle').addEventListener('click', event => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('alphasight-theme', isDark ? 'dark' : 'light');
+      event.currentTarget.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} theme`);
+      if (chartInstance) renderChart();
+    });
+    const savedTheme = localStorage.getItem('alphasight-theme');
+    if (savedTheme === 'light') document.documentElement.classList.remove('dark');
+    document.getElementById('theme-toggle').setAttribute('aria-label', document.documentElement.classList.contains('dark') ? 'Switch to light theme' : 'Switch to dark theme');
+
+    document.getElementById('export-button').addEventListener('click', () => {
+      const visibleStocks = stocks.filter(stock => indexFilter.value === 'all' || stock.indexes.includes(indexFilter.value));
+      const csvRows = [['Ticker', 'Exchange', 'Price', 'PEG', 'ROIC', 'Market implied FCF growth', 'Estimate FCF growth', 'Narrative'], ...visibleStocks.map(stock => [stock.ticker, stock.exchange, stock.price, stock.peg, stock.roic, stock.implied, stock.estimate, stock.narrative])];
+      const csv = csvRows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
+      const url = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }));
+      const link = Object.assign(document.createElement('a'), { href: url, download: 'alphasight-screener.csv' });
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    function processImage(file) {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { window.alert('Please choose a PNG, JPG, or WebP image.'); return; }
+      uploadZone.classList.add('hidden');
+      document.getElementById('loading-state').classList.remove('hidden');
+      window.setTimeout(() => {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('result-dashboard').classList.remove('hidden');
+        renderChart();
+      }, 1000);
+    }
+    fileInput.addEventListener('change', () => processImage(fileInput.files[0]));
+    uploadZone.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fileInput.click(); } });
+    ['dragenter', 'dragover'].forEach(type => uploadZone.addEventListener(type, event => { event.preventDefault(); uploadZone.classList.add('dragging'); }));
+    ['dragleave', 'drop'].forEach(type => uploadZone.addEventListener(type, event => { event.preventDefault(); uploadZone.classList.remove('dragging'); }));
+    uploadZone.addEventListener('drop', event => processImage(event.dataTransfer.files[0]));
+    document.getElementById('reset-portfolio').addEventListener('click', () => {
+      document.getElementById('result-dashboard').classList.add('hidden');
+      uploadZone.classList.remove('hidden');
+      fileInput.value = '';
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    });
+
+    function renderChart() {
+      if (!window.Chart) return;
+      const canvas = document.getElementById('sector-chart');
+      const dark = document.documentElement.classList.contains('dark');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(canvas, {
+        type: 'doughnut',
+        data: { labels: ['Info Tech · 67%', 'Financials · 18%', 'Cash · 15%'], datasets: [{ data: [67, 18, 15], backgroundColor: ['#5ea8d8', '#75c4a2', '#d4a85f'], borderColor: dark ? '#172122' : '#ffffff', borderWidth: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { position: 'right', labels: { color: dark ? '#9baaa4' : '#596a62', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10, boxHeight: 10, padding: 13 } }, tooltip: { callbacks: { label: context => ` ${context.label}` } } } }
+      });
+    }
+
+    renderRows();
+  </script>
+</body>
+</html>
